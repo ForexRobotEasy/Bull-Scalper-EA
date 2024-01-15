@@ -1,0 +1,81 @@
+
+// Bull Scalper EA
+// Developer: Forex Robot Easy Team (forexroboteasy.com)
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Timeseries\Timeseries.mqh>
+
+// Define constants for trading parameters
+#define LOT_SIZE 0.01
+#define STOP_LOSS 30
+#define TAKE_PROFIT 50
+#define MAX_RISK_PERCENT 2
+
+// Define global variables
+CTrade trade; // Trading object
+CTimeseries series; // Timeseries object
+
+// Initialize the Expert Advisor
+int OnInit()
+{
+    // Initialize the trading object
+    trade.SetExpertMagicNumber(123456); // Set a unique magic number for the Expert Advisor
+
+    // Initialize the timeseries object
+    series.SetSymbol(_Symbol); // Set the symbol for analysis
+    series.SetPeriod(PERIOD_M15); // Set the timeframe for analysis
+
+    return(INIT_SUCCEEDED);
+}
+
+// Handle new tick events
+void OnTick()
+{
+    // Perform market analysis
+    double currentPrice = series.GetClose(0); // Get the close price of the current candle
+    double previousPrice = series.GetClose(1); // Get the close price of the previous candle
+
+    // Check for bullish market conditions
+    if (currentPrice > previousPrice)
+    {
+        // Calculate risk percentage based on account equity
+        double accountEquity = AccountEquity();
+        double maxRiskAmount = accountEquity * MAX_RISK_PERCENT / 100;
+
+        // Calculate position size based on risk amount and stop loss level
+        double positionSize = NormalizeDouble(maxRiskAmount / STOP_LOSS / _Point, 2);
+
+        // Place a buy order
+        trade.Buy(LOT_SIZE, currentPrice, STOP_LOSS, TAKE_PROFIT, 'Bull Scalper');
+
+        // Print trade details to the Experts tab
+        Print('Buy order placed at ', currentPrice);
+        Print('Position size: ', positionSize);
+    }
+}
+
+// Handle trade events
+void OnTrade()
+{
+    // Check for open trades
+    if (trade.PositionSelect(_Symbol))
+    {
+        // Check for stop loss hits
+        if (trade.PositionStopLoss() > 0 && trade.PositionStopLoss() >= series.GetClose(0))
+        {
+            // Close the trade
+            trade.PositionClose();
+
+            // Print trade details to the Experts tab
+            Print('Stop loss hit. Trade closed at ', series.GetClose(0));
+        }
+    }
+}
+
+// Handle deinitialization
+void OnDeinit(const int reason)
+{
+    // Print the reason for deinitialization to the Experts tab
+    Print('Deinitialized with reason: ', reason);
+}
